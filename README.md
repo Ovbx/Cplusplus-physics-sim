@@ -21,8 +21,9 @@ g++ -std=c++20 main.cpp -o output/main.exe -lsfml-graphics -lsfml-window -lsfml-
 - [x] Circle drawing
 - [x] Rescaling border
 - [x] Position updating w/substepping
+- [x] Fix energy generation bug
 ### In prog.
-- [ ] Fix energy generation bug
+- [ ] fix alternating energy while "resting"
 - [ ] Mouse click to select
 - [ ] Ball collisions
 - [ ] Mass-weighted elastic collisions response
