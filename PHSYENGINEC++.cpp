@@ -7,10 +7,10 @@
 int Width = 1000;
 int Height = 600;
 int fps = 60;
-int wall_thickness = 10;
+int wall_thickness = 12;
 double gravity = 0.5;
 double bounce_stop = 0.3;
-double substeps = 4;
+double substeps = 1;
 
 std::vector<sf::Vector2i> mouse_trajectory;
 
@@ -37,42 +37,13 @@ Ball(int x_pos, int y_pos, double radius, int mass, double retention, double x_s
         shape.setFillColor(sf::Color::Blue);
         window.draw(shape);
     }
-    double checkGravity(float width, float height, double x_push, double y_push) {
-        if (!selected) {
-            if (y_pos < height - radius - (wall_thickness / 2)) {
-                y_speed += gravity;
-            }
-            else {
-                if (y_speed > bounce_stop) {
-                    y_speed = y_speed * -1 * retention;
-                }
-                else {
-                    if(std::abs(y_speed) <= bounce_stop) {
-                        y_speed = 0;
-                    }
-                }
-                if ((x_pos < radius + (wall_thickness/2) && x_speed < 0) || x_pos > width - radius - (wall_thickness / 2 ) && x_speed > 0) {
-                    x_speed *= -1 * retention;
-                    if (std::abs(x_speed) < bounce_stop) {
-                        x_speed = 0;
-                    }
-                }
-                if (y_speed ==0 && x_speed != 0) {
-                    if (x_speed > 0) {
-                        x_speed -= friction;
-                    }
-                    if (x_speed < 0) {
-                        x_speed += friction;
-                    }
-                }
-            }
-            
-        }
-        else {
-            x_speed = x_push;
-            y_speed = y_push;
-        }
-        return y_speed;
+    void applyGravity(float height) {
+        if (selected)
+        return;
+        bool onFloor = (y_pos >= height - radius - wall_thickness / 2) && std::abs(y_speed) < bounce_stop;
+        if (!onFloor)
+            y_speed += gravity;
+        
     }
     void updatePos(double substeps, sf::Vector2i mouse) {
         if(!selected) {
@@ -88,6 +59,31 @@ Ball(int x_pos, int y_pos, double radius, int mass, double retention, double x_s
         //need work
         selected = false;
         return selected;
+    }
+    void checkWalls(float width, float height) {
+        if (selected)
+        return;
+        //floor hcekc
+        if (y_pos >= height - radius - (wall_thickness / 2 )) {
+            y_pos = height - radius - (wall_thickness / 2);
+            if (y_speed > bounce_stop)
+                y_speed = y_speed * -1 * retention;
+            else if (std::abs(y_speed) <= bounce_stop)
+                y_speed = 0;
+        }
+
+        //wall check
+        if((x_pos < radius + (wall_thickness / 2) && x_speed < 0) || (x_pos > width - radius - (wall_thickness / 2 ))) {
+            x_speed *= -1 * retention;
+            if (std::abs(x_speed) < bounce_stop)
+            x_speed = 0;
+        }
+        if (y_speed == 0 && x_speed != 0) {
+            if (x_speed > 0)
+            x_speed -= friction;
+            else if (x_speed < 0)
+            x_speed += friction;
+        }
     }
 };
 
@@ -110,8 +106,17 @@ void drawWalls(sf::RenderWindow& window) {
     mainRect.setOutlineThickness(wall_thickness);
     window.draw(mainRect);
 }
-Ball ball1(200, 200, 20, 200, 0.9, 0, 0, 1, 0.02);
-Ball ball2(100, 300, 30, 200, 0.9, 0, 0, 2, 0.02);
+
+double total_energy(std::vector<Ball>& balls) {
+    double total = 0;
+    for (Ball& ball:balls) {
+        total += 0.5 * ball.mass * (ball.x_speed * ball.x_speed + ball.y_speed * ball.y_speed);
+    }
+    return total;
+}
+
+Ball ball1(200, 200, 20, 200, 0.5, 0, 0, 1, 0.02);
+Ball ball2(100, 300, 30, 200, 0.5, 0, 0, 2, 0.02);
 
 std::vector<Ball> balls = {ball1, ball2};
 
@@ -140,17 +145,21 @@ int main() {
     
         window.clear(sf::Color::Black);
         drawWalls(window);
+        sf::Vector2u size = window.getSize();
         //draw everything else here ig
         for(auto& ball:balls) {
+            ball.applyGravity(size.y);
             ball.drawCircle(window);
-            sf::Vector2u size = window.getSize();
-            ball.checkGravity(size.x, size.y, push.x, push.y);
         }
+
+    
         for (int i = 0; i < substeps; i++) {
-            for (auto & ball: balls) {
+            for (auto& ball: balls) {
                 ball.updatePos(substeps, mouse_coords);
+                ball.checkWalls(size.x, size.y);
             }
         }
+        std::cout << "Ke: " << total_energy(balls) << "\n";
         window.display();
     }
 }
