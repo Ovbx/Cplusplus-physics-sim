@@ -22,12 +22,15 @@ g++ -std=c++20 main.cpp -o output/main.exe -lsfml-graphics -lsfml-window -lsfml-
 - [x] Rescaling border
 - [x] Position updating w/substepping
 - [x] Fix energy generation bug
+- [x] fix alternating energy while "resting"
+- [x] Mouse click to select
 ### In prog.
-- [ ] fix alternating energy while "resting"
-- [ ] Mouse click to select
 - [ ] Ball collisions
 - [ ] Mass-weighted elastic collisions response
 - [ ] Quadtree optimization
+- [ ] Add ball button/key
+- [ ] Customize colors
+- [ ] Polish visuals
 
 ## Notes
 Translated from python/pygame to C++, uses the essentially the same design. C++ version adds manual memory manipulation/awareness. Built primarily to learn C++ through context and as a learning project towards embedded/systems work.
