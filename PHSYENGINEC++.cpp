@@ -45,7 +45,7 @@ Ball(int x_pos, int y_pos, double radius, int mass, double retention, double x_s
             y_speed += gravity;
         
     }
-    void updatePos(double substeps, sf::Vector2i mouse) {
+    void updatePos(sf::Vector2i mouse) {
         if(!selected) {
             y_pos += y_speed / substeps;
             x_pos += x_speed / substeps;
@@ -55,9 +55,11 @@ Ball(int x_pos, int y_pos, double radius, int mass, double retention, double x_s
             y_pos = mouse.y;
         }
     }
-    bool check_select() {
-        //need work
-        selected = false;
+    bool check_select(sf::Vector2i mouse) {
+        double dx = mouse.x - x_pos;
+        double dy = mouse.y - y_pos;
+        double dist = std::sqrt(dx*dx + dy*dy);
+        selected = (dist <= radius);
         return selected;
     }
     void checkWalls(float width, float height) {
@@ -65,7 +67,7 @@ Ball(int x_pos, int y_pos, double radius, int mass, double retention, double x_s
         return;
         //floor hcekc
         if (y_pos >= height - radius - (wall_thickness / 2 )) {
-            y_pos = height - radius - (wall_thickness / 2);
+            y_pos = height - radius - (wall_thickness/2.4);
             if (y_speed > bounce_stop)
                 y_speed = y_speed * -1 * retention;
             else if (std::abs(y_speed) <= bounce_stop)
@@ -73,16 +75,26 @@ Ball(int x_pos, int y_pos, double radius, int mass, double retention, double x_s
         }
 
         //wall check
-        if((x_pos < radius + (wall_thickness / 2) && x_speed < 0) || (x_pos > width - radius - (wall_thickness / 2 ))) {
+        if (x_pos < radius + wall_thickness/2) {
+            x_pos = radius + wall_thickness / 2;
+            if (x_speed < 0)
             x_speed *= -1 * retention;
-            if (std::abs(x_speed) < bounce_stop)
-            x_speed = 0;
+        }
+        if (x_pos > width - radius - wall_thickness/2 ) {
+            x_pos = width - radius - wall_thickness/2;
+            if (x_speed > 0) 
+            x_speed *= -1 * retention;
         }
         if (y_speed == 0 && x_speed != 0) {
-            if (x_speed > 0)
-            x_speed -= friction;
-            else if (x_speed < 0)
-            x_speed += friction;
+            if (std::abs(x_speed) <= friction) {
+                x_speed = 0;
+            }
+            else if (x_speed > 0) {
+                x_speed -= friction;
+            }
+            else {
+                x_speed += friction;
+            }
         }
     }
 };
@@ -115,8 +127,8 @@ double total_energy(std::vector<Ball>& balls) {
     return total;
 }
 
-Ball ball1(200, 200, 20, 200, 0.5, 0, 0, 1, 0.02);
-Ball ball2(100, 300, 30, 200, 0.5, 0, 0, 2, 0.02);
+Ball ball1(200, 200, 20, 200, 0.6, 0, 0, 1, 0.02);
+Ball ball2(100, 300, 100, 200, 0.6, 0, 0, 2, 0.02);
 
 std::vector<Ball> balls = {ball1, ball2};
 
@@ -126,6 +138,7 @@ int main() {
     sf::RenderWindow window(sf::VideoMode({(unsigned)Width, (unsigned)Height}), "C++ Physics Engine");
     window.setFramerateLimit(fps);
     while (window.isOpen()) {
+        sf::Vector2f push = calc_motion_vector();
         while (const std::optional event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>())
                 window.close();
@@ -133,6 +146,25 @@ int main() {
                 sf::FloatRect area({0.f, 0.f}, sf::Vector2f(resized->size));
                 window.setView(sf::View(area));
             }
+            if ( const auto* click = event->getIf<sf::Event::MouseButtonPressed>()) {
+                if (click->button == sf::Mouse::Button::Left) {
+                    for (auto& ball: balls) {
+                        ball.check_select(click->position);
+                    }
+                }   
+            }
+            if (const auto* released = event->getIf<sf::Event::MouseButtonReleased>()) {
+                if (released->button == sf::Mouse::Button::Left) {
+                    for (auto& ball: balls) {
+                        if (ball.selected) {
+                            ball.x_speed = push.x;
+                            ball.y_speed = push.y;
+                        }
+                        ball.selected = false;
+                    }
+                }
+            }
+            
         }
 
         sf::Vector2i mouse_coords = sf::Mouse::getPosition(window);
@@ -140,7 +172,6 @@ int main() {
         if(mouse_trajectory.size() > 20) {
             mouse_trajectory.erase(mouse_trajectory.begin());
         }
-        sf::Vector2f push = calc_motion_vector();
 
     
         window.clear(sf::Color::Black);
@@ -155,7 +186,7 @@ int main() {
     
         for (int i = 0; i < substeps; i++) {
             for (auto& ball: balls) {
-                ball.updatePos(substeps, mouse_coords);
+                ball.updatePos(mouse_coords);
                 ball.checkWalls(size.x, size.y);
             }
         }
