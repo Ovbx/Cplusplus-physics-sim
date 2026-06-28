@@ -24,10 +24,10 @@ g++ -std=c++20 main.cpp -o output/main.exe -lsfml-graphics -lsfml-window -lsfml-
 - [x] Fix energy generation bug
 - [x] fix alternating energy while "resting"
 - [x] Mouse click to select
+- [x] Quad Tree optimization
 ### In prog.
 - [ ] Ball collisions
 - [ ] Mass-weighted elastic collisions response
-- [ ] Quadtree optimization
 - [ ] Add ball button/key
 - [ ] Customize colors
 - [ ] Polish visuals
