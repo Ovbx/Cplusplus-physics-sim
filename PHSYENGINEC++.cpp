@@ -14,6 +14,7 @@ double substeps = 1;
 
 std::vector<sf::Vector2i> mouse_trajectory;
 
+
 class Ball {
 public:
 int x_pos;
@@ -99,6 +100,91 @@ Ball(int x_pos, int y_pos, double radius, int mass, double retention, double x_s
     }
 };
 
+class QuadTree {
+public:
+    sf::FloatRect boundary;
+    int capacity = 4;
+    std::vector <Ball> balls;
+    bool divided = false;
+    QuadTree* nw = nullptr;
+    QuadTree* ne = nullptr;
+    QuadTree* sw = nullptr;
+    QuadTree* se = nullptr;
+
+QuadTree(sf::FloatRect boundary, int capacity) : boundary(boundary), capacity(capacity)
+{
+    std::cout << "QuadTree created!";
+}
+~QuadTree() {
+    delete nw;
+    delete ne;
+    delete sw;
+    delete se;
+
+}
+
+bool contains(Ball& ball) {
+    return boundary.contains(sf::Vector2f(ball.x_pos, ball.y_pos));
+}
+
+void subdivide() {
+    float hw = boundary.size.x / 2;
+    float hh = boundary.size.y / 2;
+    nw = new QuadTree(sf::FloatRect({boundary.position.x, boundary.position.y}, {hw, hh}), capacity);
+    ne = new QuadTree(sf::FloatRect({boundary.position.x + hw, boundary.position.y}, {hw, hh}), capacity);
+    sw = new QuadTree(sf::FloatRect({boundary.position.x, boundary.position.y + hh}, {hw, hh}), capacity);
+    se = new QuadTree(sf::FloatRect({boundary.position.x + hw, boundary.position.y + hh}, {hw, hh}), capacity);
+    divided = true;
+}
+bool intersects(sf::FloatRect area) {
+    float bx = boundary.position.x;
+    float by = boundary.position.y;
+    float bw = boundary.size.x;
+    float bh = boundary.size.y;
+
+    float ax = area.position.x;
+    float ay = area.position.y;
+    float aw = area.size.x;
+    float ah = area.size.y;
+    
+    return !(ax > bx + bw || ax + aw < bx || ay > by + bh || ay + ah < by);
+}
+std::vector<Ball> query(sf::FloatRect area, std::vector<Ball> found = {}) {
+    if (!intersects(area))
+        return found;
+    float rx = area.position.x;
+    float ry = area.position.y;
+    float rw = area.size.x;
+    float rh = area.size.y;
+    for (Ball& ball: balls) {
+        if (rx <= ball.x_pos && ball.x_pos <= rx + rw && ry <= ball.y_pos && ball.y_pos <= ry + rh) {
+            found.push_back(ball);
+        }
+    }
+    if (divided) {
+        found = nw->query(area, found);
+        found = ne->query(area, found);
+        found = sw->query(area, found);
+        found = se->query(area,found);
+    }
+    return found;
+
+}
+bool insert(Ball& ball) {
+    if (!contains(ball)) {
+        return false;
+    }
+    if (balls.size() < capacity) {
+        balls.push_back(ball);
+        return true;
+    }
+    if (!divided) {
+        subdivide();
+    }
+    return (nw->insert(ball) || ne->insert(ball) || se->insert(ball) || sw->insert(ball));
+}
+};
+
 sf::Vector2f calc_motion_vector() {
     float x = 0;
     float y = 0;
@@ -177,7 +263,6 @@ int main() {
         window.clear(sf::Color::Black);
         drawWalls(window);
         sf::Vector2u size = window.getSize();
-        //draw everything else here ig
         for(auto& ball:balls) {
             ball.applyGravity(size.y);
             ball.drawCircle(window);
@@ -190,6 +275,16 @@ int main() {
                 ball.checkWalls(size.x, size.y);
             }
         }
+        //quad tree stuff:
+        QuadTree qt(sf::FloatRect({0.f, 0.f}, {(float)size.x, (float)size.y}), 4);
+
+        for (auto& ball: balls) {
+            qt.insert(ball);
+            float r = ball.radius;
+            sf::FloatRect area({(float)(ball.x_pos - 2*r), (float)(ball.y_pos - 2*r)}, {(float)(4*r), (float)(4*r)});
+            std::vector<Ball> nearby = qt.query(area);
+        }
+        //make collisions here 
         std::cout << "Ke: " << total_energy(balls) << "\n";
         window.display();
     }
