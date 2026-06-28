@@ -3,6 +3,7 @@
 #include <vector>
 #include <cmath>
 #include <optional>
+#include <set>
 
 int Width = 1000;
 int Height = 600;
@@ -17,8 +18,8 @@ std::vector<sf::Vector2i> mouse_trajectory;
 
 class Ball {
 public:
-int x_pos;
-int y_pos;
+double x_pos;
+double y_pos;
 double radius;
 double mass;
 double retention;
@@ -27,7 +28,7 @@ int id;
 double friction;
 bool selected = false;
 
-Ball(int x_pos, int y_pos, double radius, int mass, double retention, double x_speed, double y_speed, int id, double friction) 
+Ball(double x_pos, double y_pos, double radius, int mass, double retention, double x_speed, double y_speed, int id, double friction) 
     : x_pos(x_pos), y_pos(y_pos), radius(radius), mass(mass), retention(retention), x_speed(x_speed), y_speed(y_speed), id(id), friction(friction)
 {
     std::cout << "Ball" << id << " created\n";
@@ -149,7 +150,7 @@ bool intersects(sf::FloatRect area) {
     
     return !(ax > bx + bw || ax + aw < bx || ay > by + bh || ay + ah < by);
 }
-std::vector<Ball> query(sf::FloatRect area, std::vector<Ball> found = {}) {
+std::vector<Ball*> query(sf::FloatRect area, std::vector<Ball*> found = {}) {
     if (!intersects(area))
         return found;
     float rx = area.position.x;
@@ -158,7 +159,7 @@ std::vector<Ball> query(sf::FloatRect area, std::vector<Ball> found = {}) {
     float rh = area.size.y;
     for (Ball& ball: balls) {
         if (rx <= ball.x_pos && ball.x_pos <= rx + rw && ry <= ball.y_pos && ball.y_pos <= ry + rh) {
-            found.push_back(ball);
+            found.push_back(&ball);
         }
     }
     if (divided) {
@@ -204,7 +205,48 @@ void drawWalls(sf::RenderWindow& window) {
     mainRect.setOutlineThickness(wall_thickness);
     window.draw(mainRect);
 }
+void resolve_collision(Ball& a, Ball& b, double width, double height) {
+    double dx = b.x_pos - a.x_pos;
+    double dy = b.y_pos - a.y_pos;
+    double dist = std::sqrt(dx * dx + dy * dy);
+    if (dist == 0) {
+        return;
+    }
+    double nx = dx / dist;
+    double ny = dy/ dist;
+    //dot
+    double aNormal = a.x_speed * nx + a.y_speed * ny;
+    double bNormal = b.x_speed * nx + b.y_speed * ny;
 
+    double da = bNormal - aNormal;
+    if (da > 0) {
+        return;
+    }
+    double m1 = a.mass;
+    double m2 = b.mass;
+    double impulse = (2*da) / (m1 + m2);
+    a.x_speed += impulse * m2 * nx;
+    a.y_speed += impulse * m2 * ny;
+    b.x_speed -= impulse * m1 * nx;
+    b.y_speed -= impulse * m1 * ny;
+
+    //overlap stuff
+    double overlap = (a.radius + b.radius) - dist;
+    if (overlap > 0) {
+        m1 = a.mass;
+        m2 = b.mass;
+        double total = m1 + m2;
+        a.x_pos -= overlap * (m2 / total) * nx;
+        a.y_pos -= overlap * (m2 / total) * ny;
+        b.x_pos += overlap * (m1 / total) * nx;
+        b.y_pos += overlap * (m1 / total) * ny;
+    }
+
+    for (Ball* obj : {&a, &b}) {
+        obj->x_pos = std::max(obj->radius + wall_thickness / 2.0, std::min(width - obj->radius - wall_thickness / 2.0, obj->x_pos));
+        obj->y_pos = std::max(obj->radius + wall_thickness/2.0, std::min(height - obj->radius - wall_thickness/2.0, obj->y_pos));
+    }
+}
 double total_energy(std::vector<Ball>& balls) {
     double total = 0;
     for (Ball& ball:balls) {
@@ -213,8 +255,8 @@ double total_energy(std::vector<Ball>& balls) {
     return total;
 }
 
-Ball ball1(200, 200, 20, 200, 0.6, 0, 0, 1, 0.02);
-Ball ball2(100, 300, 100, 200, 0.6, 0, 0, 2, 0.02);
+Ball ball1(200, 200, 20, 200, 0.9, 0, 0, 1, 0.02);
+Ball ball2(100, 300, 30, 200, 0.9, 0, 0, 2, 0.02);
 
 std::vector<Ball> balls = {ball1, ball2};
 
@@ -280,11 +322,28 @@ int main() {
 
         for (auto& ball: balls) {
             qt.insert(ball);
-            float r = ball.radius;
-            sf::FloatRect area({(float)(ball.x_pos - 2*r), (float)(ball.y_pos - 2*r)}, {(float)(4*r), (float)(4*r)});
-            std::vector<Ball> nearby = qt.query(area);
         }
-        //make collisions here 
+        std::set<std::pair<int, int>> checked;
+        for (auto& ball: balls) {
+            double r = ball.radius;
+            sf::FloatRect area({(float)(ball.x_pos - 2*r), (float)(ball.y_pos - 2*r)}, {(float)(4*r), (float)(4*r)});
+            std::vector<Ball*> nearby = qt.query(area);
+
+            for (auto* other: nearby) {
+                if (other->id == ball.id)
+                    continue;
+                std::pair<int, int> pair = {std::min(ball.id, other->id), std::max(ball.id, other->id)};
+                if (checked.count(pair))
+                    continue;
+                checked.insert(pair);
+                double dx = other->x_pos - ball.x_pos;
+                double dy = other->y_pos - ball.y_pos;
+                double dist = std::sqrt(dx * dx + dy * dy);
+                if (dist < ball.radius + other->radius) 
+                    resolve_collision(ball, *other, size.x, size.y);
+            }
+        }
+
         std::cout << "Ke: " << total_energy(balls) << "\n";
         window.display();
     }
