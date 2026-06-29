@@ -1,6 +1,8 @@
 # C++ physics-sim
 A real-time 2D physics engine written from scratch in C++ with SFML 3, ported from an earlier Python/pygame version. Balls fall under gravity, bounce off walls, and collide with each other using a quadtree for efficient broad-phase detection.
 
+<img width="998" height="624" alt="c++physics demo" src="https://github.com/user-attachments/assets/a9afcf7b-96f9-4cbe-a543-8f595fbfe185" />
+
 ## Built with
 - C++ (C++20)
 - SFML (window, graphics, system)
@@ -27,9 +29,9 @@ g++ -std=c++20 main.cpp -o output/main.exe -lsfml-graphics -lsfml-window -lsfml-
 - [x] Quad Tree optimization
 - [x] Ball collisions
 - [x] Mass-weighted elastic collisions response
+- [x] Color changing with velocity
 ### In prog.
 - [ ] Add ball button/key
-- [ ] Customize colors
 - [ ] Polish visuals
 
 ## Notes
