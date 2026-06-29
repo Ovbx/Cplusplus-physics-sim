@@ -123,7 +123,6 @@ public:
 
 QuadTree(sf::FloatRect boundary, int capacity) : boundary(boundary), capacity(capacity)
 {
-    std::cout << "QuadTree created!";
 }
 ~QuadTree() {
     delete nw;
@@ -196,7 +195,7 @@ bool insert(Ball& ball) {
 };
 Ball ball1(200, 200, 20, 200, 0.9, 0, 0, 1, 0.02);
 Ball ball2(100, 300, 30, 200, 0.9, 0, 0, 2, 0.02);
-
+int nextId = 3;
 std::vector<Ball> balls = {ball1, ball2};
 
 sf::Vector2f calc_motion_vector() {
@@ -274,6 +273,7 @@ int main() {
     sf::RenderWindow window(sf::VideoMode({(unsigned)Width, (unsigned)Height}), "C++ Physics Engine");
     window.setFramerateLimit(fps);
     while (window.isOpen()) {
+        sf::Vector2i mouse_coords = sf::Mouse::getPosition(window);
         sf::Vector2f push = calc_motion_vector();
         while (const std::optional event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>())
@@ -300,10 +300,13 @@ int main() {
                     }
                 }
             }
+            if (const auto* spawnBall = event->getIf<sf::Event::MouseWheelScrolled>()) {
+                balls.push_back(Ball(mouse_coords.x, mouse_coords.y, 20, 200, 0.5, 0, 0, nextId, 0.02));
+                nextId++;
+            }
             
         }
 
-        sf::Vector2i mouse_coords = sf::Mouse::getPosition(window);
         mouse_trajectory.push_back(mouse_coords);
         if(mouse_trajectory.size() > 20) {
             mouse_trajectory.erase(mouse_trajectory.begin());
@@ -351,8 +354,6 @@ int main() {
                     resolve_collision(ball, *other, size.x, size.y);
             }
         }
-
-        std::cout << "Ke: " << total_energy(balls) << "\n";
         window.display();
     }
 }
