@@ -11,7 +11,9 @@ int fps = 60;
 int wall_thickness = 12;
 double gravity = 0.5;
 double bounce_stop = 0.3;
-double substeps = 4;
+int substeps = 3;
+int solverInterations = 4;
+
 
 std::vector<sf::Vector2i> mouse_trajectory;
 
@@ -200,8 +202,8 @@ bool insert(Ball& ball) {
     return (nw->insert(ball) || ne->insert(ball) || se->insert(ball) || sw->insert(ball));
 }
 };
-Ball ball1(200, 200, 20, 200, 0.5, 0, 0, 1, 0.02);
-Ball ball2(100, 300, 30, 200, 0.5, 0, 0, 2, 0.02);
+Ball ball1(200, 200, 20, 200, 0.9, 0, 0, 1, 0.02);
+Ball ball2(100, 300, 30, 200, 0.9, 0, 0, 2, 0.02);
 int nextId = 3;
 std::vector<Ball> balls = {ball1, ball2};
 
@@ -308,7 +310,7 @@ int main() {
                 }
             }
             if (const auto* spawnBall = event->getIf<sf::Event::MouseWheelScrolled>()) {
-                balls.push_back(Ball(mouse_coords.x, mouse_coords.y, 5, 5, 0.5, 0, 0, nextId, 0.02));
+                balls.push_back(Ball(mouse_coords.x, mouse_coords.y, 5, 5, 0.9, 0, 0, nextId, 0.02));
                 nextId++;
             }
             
@@ -332,29 +334,30 @@ int main() {
                 ball.updatePos(mouse_coords);
                 ball.checkWalls(size.x, size.y);
             }
-
             QuadTree qt(sf::FloatRect({0.f, 0.f}, {(float)size.x, (float)size.y}), 4);
-            for (auto& ball:balls)
-                qt.insert(ball);
-            
-            std::set<std::pair<int, int>> checked;
+            for (int iter = 0; iter < solverInterations; iter++) {
+                for (auto& ball:balls)
+                    qt.insert(ball);
+                
+                std::set<std::pair<int, int>> checked;
 
-            for (auto&ball: balls) {
-                double r = ball.radius;
-                sf::FloatRect area({(float)(ball.x_pos - 2*r), (float)(ball.y_pos - 2*r)}, {(float)(4*r), (float)(4*r)});
-                std::vector<Ball*> nearby = qt.query(area);
-                for (auto* other: nearby) {
-                    if (other->id == ball.id)
-                        continue;
-                    std::pair<int, int> pair = {std::min(ball.id, other->id), std::max(ball.id, other->id)};
-                    if (checked.count(pair))
-                        continue;
-                    checked.insert(pair);
-                    double dx = other->x_pos - ball.x_pos;
-                    double dy = other->y_pos - ball.y_pos;
-                    double dist = std::sqrt(dx * dx + dy * dy);
-                    if (dist < ball.radius + other->radius) 
-                        resolve_collision(ball, *other, size.x, size.y);
+                for (auto&ball: balls) {
+                    double r = ball.radius;
+                    sf::FloatRect area({(float)(ball.x_pos - 2*r), (float)(ball.y_pos - 2*r)}, {(float)(4*r), (float)(4*r)});
+                    std::vector<Ball*> nearby = qt.query(area);
+                    for (auto* other: nearby) {
+                        if (other->id == ball.id)
+                            continue;
+                        std::pair<int, int> pair = {std::min(ball.id, other->id), std::max(ball.id, other->id)};
+                        if (checked.count(pair))
+                            continue;
+                        checked.insert(pair);
+                        double dx = other->x_pos - ball.x_pos;
+                        double dy = other->y_pos - ball.y_pos;
+                        double dist = std::sqrt(dx * dx + dy * dy);
+                        if (dist < ball.radius + other->radius) 
+                            resolve_collision(ball, *other, size.x, size.y);
+                    }
                 }
             }
         }
