@@ -36,7 +36,15 @@ Ball(double x_pos, double y_pos, double radius, int mass, double retention, doub
     void drawCircle(sf::RenderWindow& window) {
         sf::CircleShape shape(radius);
         shape.setPosition({(float)(x_pos - radius), (float)(y_pos - radius)});
-        shape.setFillColor(sf::Color::Blue);
+        double speed = std::sqrt(x_speed * x_speed + y_speed * y_speed);
+        double maxSpeed = 30;
+        double normalized = speed / maxSpeed;
+        if (normalized > 1.0) {
+            normalized = 1;
+        }
+        int red = (int)(normalized * 255);
+        shape.setFillColor(sf::Color(red, 0, 255 - red));
+
         window.draw(shape);
     }
     void applyGravity(float height) {
@@ -99,6 +107,7 @@ Ball(double x_pos, double y_pos, double radius, int mass, double retention, doub
             }
         }
     }
+
 };
 
 class QuadTree {
@@ -185,6 +194,10 @@ bool insert(Ball& ball) {
     return (nw->insert(ball) || ne->insert(ball) || se->insert(ball) || sw->insert(ball));
 }
 };
+Ball ball1(200, 200, 20, 200, 0.9, 0, 0, 1, 0.02);
+Ball ball2(100, 300, 30, 200, 0.9, 0, 0, 2, 0.02);
+
+std::vector<Ball> balls = {ball1, ball2};
 
 sf::Vector2f calc_motion_vector() {
     float x = 0;
@@ -254,11 +267,6 @@ double total_energy(std::vector<Ball>& balls) {
     }
     return total;
 }
-
-Ball ball1(200, 200, 20, 200, 0.9, 0, 0, 1, 0.02);
-Ball ball2(100, 300, 30, 200, 0.9, 0, 0, 2, 0.02);
-
-std::vector<Ball> balls = {ball1, ball2};
 
 bool running = true;
 
