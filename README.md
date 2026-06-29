@@ -36,7 +36,6 @@ g++ -std=c++20 main.cpp -o output/main.exe -lsfml-graphics -lsfml-window -lsfml-
 - [x] Velocity-based color (blue->red)
 - [x] Spawn ball w/scroll wheel
 - [x] Ceiling check
-- [ ] 
 ### In prog.
 - [ ] Polish visuals
 - [ ] Fix dense collision by implementing a sequential impulse solver
@@ -45,5 +44,8 @@ g++ -std=c++20 main.cpp -o output/main.exe -lsfml-graphics -lsfml-window -lsfml-
 - Resting balls jitter slightly (solver iterations)
 - Dense piles causes waves (needs sleeping to fix)
 - Query assumes uniform radius (not sure as of this moment)
+- Stacked towers causes launches and gaps in between balls
+  <img width="550" height="358" alt="cppissue1" src="https://github.com/user-attachments/assets/ef8f323a-07ac-4d06-9b78-4ef692063752" />
+
 ## Notes
 Translated from python/pygame to C++, uses the essentially the same design. C++ version adds manual memory manipulation/awareness. Built primarily to introduce/learn C++ through context and as a learning project towards embedded/systems work.
