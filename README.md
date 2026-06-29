@@ -1,8 +1,12 @@
 # C++ physics-sim
 A real-time 2D physics engine written from scratch in C++ with SFML 3, ported from an earlier Python/pygame version. Balls fall under gravity, bounce off walls, and collide with each other using a quadtree for efficient broad-phase detection.
 
-<img width="998" height="624" alt="c++physics demo" src="https://github.com/user-attachments/assets/a9afcf7b-96f9-4cbe-a543-8f595fbfe185" />
+<img width="996" height="622" alt="cppphysicsdemo2" src="https://github.com/user-attachments/assets/58507e7b-f989-4316-a184-dbef64b7f338" />
 
+## Controls
+- Left-click + drag: grab and throw ball
+- Scroll wheel: spawn a new ball at cursor
+- Resize window: resize box
 ## Built with
 - C++ (C++20)
 - SFML (window, graphics, system)
@@ -29,10 +33,17 @@ g++ -std=c++20 main.cpp -o output/main.exe -lsfml-graphics -lsfml-window -lsfml-
 - [x] Quad Tree optimization
 - [x] Ball collisions
 - [x] Mass-weighted elastic collisions response
-- [x] Color changing with velocity
+- [x] Velocity-based color (blue->red)
+- [x] Spawn ball w/scroll wheel
+- [x] Ceiling check
+- [ ] 
 ### In prog.
-- [ ] Add ball button/key
 - [ ] Polish visuals
-
+- [ ] Fix dense collision by implementing a sequential impulse solver
+- [ ] Introduce rigid ball sleeping threshold to prevent jitter while resting
+## Known limitations
+- Resting balls jitter slightly (solver iterations)
+- Dense piles causes waves (needs sleeping to fix)
+- Query assumes uniform radius (not sure as of this moment)
 ## Notes
-Translated from python/pygame to C++, uses the essentially the same design. C++ version adds manual memory manipulation/awareness. Built primarily to learn C++ through context and as a learning project towards embedded/systems work.
+Translated from python/pygame to C++, uses the essentially the same design. C++ version adds manual memory manipulation/awareness. Built primarily to introduce/learn C++ through context and as a learning project towards embedded/systems work.
