@@ -12,7 +12,7 @@ int wall_thickness = 12;
 double gravity = 0.5;
 double bounce_stop = 0.3;
 int substeps = 3;
-int solverInterations = 4;
+int solverInterations = 6;
 
 
 std::vector<sf::Vector2i> mouse_trajectory;
@@ -123,7 +123,7 @@ class QuadTree {
 public:
     sf::FloatRect boundary;
     int capacity = 4;
-    std::vector <Ball> balls;
+    std::vector <Ball*> balls;
     bool divided = false;
     QuadTree* nw = nullptr;
     QuadTree* ne = nullptr;
@@ -174,9 +174,9 @@ std::vector<Ball*> query(sf::FloatRect area, std::vector<Ball*> found = {}) {
     float ry = area.position.y;
     float rw = area.size.x;
     float rh = area.size.y;
-    for (Ball& ball: balls) {
-        if (rx <= ball.x_pos && ball.x_pos <= rx + rw && ry <= ball.y_pos && ball.y_pos <= ry + rh) {
-            found.push_back(&ball);
+    for (Ball* ball: balls) {
+        if (rx <= ball->x_pos && ball->x_pos <= rx + rw && ry <= ball->y_pos && ball->y_pos <= ry + rh) {
+            found.push_back(ball);
         }
     }
     if (divided) {
@@ -188,8 +188,8 @@ std::vector<Ball*> query(sf::FloatRect area, std::vector<Ball*> found = {}) {
     return found;
 
 }
-bool insert(Ball& ball) {
-    if (!contains(ball)) {
+bool insert(Ball* ball) {
+    if (!contains(*ball)) {
         return false;
     }
     if (balls.size() < capacity) {
@@ -230,11 +230,16 @@ void resolve_collision(Ball& a, Ball& b, double width, double height) {
     double dx = b.x_pos - a.x_pos;
     double dy = b.y_pos - a.y_pos;
     double dist = std::sqrt(dx * dx + dy * dy);
-    if (dist == 0) {
-        return;
+    double nx, ny;
+    if (dist < 0.0001) {
+        nx = 0;
+        ny = 1;
+        dist = 0.0001;
     }
-    double nx = dx / dist;
-    double ny = dy/ dist;
+    else {
+        nx = dx / dist;
+        ny = dy/ dist;
+    }
     //dot
     double aNormal = a.x_speed * nx + a.y_speed * ny;
     double bNormal = b.x_speed * nx + b.y_speed * ny;
@@ -253,14 +258,16 @@ void resolve_collision(Ball& a, Ball& b, double width, double height) {
 
     //overlap stuff
     double overlap = (a.radius + b.radius) - dist;
-    if (overlap > 0) {
+    double slop = 0.9;
+    if (overlap > slop) {
         m1 = a.mass;
         m2 = b.mass;
+        double correction = (overlap-slop) * 0.8;
         double total = m1 + m2;
-        a.x_pos -= overlap * (m2 / total) * nx;
-        a.y_pos -= overlap * (m2 / total) * ny;
-        b.x_pos += overlap * (m1 / total) * nx;
-        b.y_pos += overlap * (m1 / total) * ny;
+        a.x_pos -= correction * (m2 / total) * nx;
+        a.y_pos -= correction * (m2 / total) * ny;
+        b.x_pos += correction * (m1 / total) * nx;
+        b.y_pos += correction * (m1 / total) * ny;
     }
 
     for (Ball* obj : {&a, &b}) {
@@ -335,9 +342,9 @@ int main() {
                 ball.checkWalls(size.x, size.y);
             }
             QuadTree qt(sf::FloatRect({0.f, 0.f}, {(float)size.x, (float)size.y}), 4);
+            for (auto& ball:balls)
+                qt.insert(&ball);
             for (int iter = 0; iter < solverInterations; iter++) {
-                for (auto& ball:balls)
-                    qt.insert(ball);
                 
                 std::set<std::pair<int, int>> checked;
 
@@ -346,12 +353,9 @@ int main() {
                     sf::FloatRect area({(float)(ball.x_pos - 2*r), (float)(ball.y_pos - 2*r)}, {(float)(4*r), (float)(4*r)});
                     std::vector<Ball*> nearby = qt.query(area);
                     for (auto* other: nearby) {
-                        if (other->id == ball.id)
+                        if (other->id <= ball.id)
                             continue;
                         std::pair<int, int> pair = {std::min(ball.id, other->id), std::max(ball.id, other->id)};
-                        if (checked.count(pair))
-                            continue;
-                        checked.insert(pair);
                         double dx = other->x_pos - ball.x_pos;
                         double dy = other->y_pos - ball.y_pos;
                         double dist = std::sqrt(dx * dx + dy * dy);
@@ -364,6 +368,7 @@ int main() {
         for (auto & ball: balls) {
             ball.drawCircle(window);
         }
+        std::cout << total_energy(balls) << std::endl;
         window.display();
     }
 }
