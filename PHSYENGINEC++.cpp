@@ -13,6 +13,7 @@ double gravity = 0.5;
 double bounce_stop = 0.3;
 int substeps = 3;
 int solverInterations = 6;
+double retention = 0.9;
 
 
 std::vector<sf::Vector2i> mouse_trajectory;
@@ -226,7 +227,7 @@ void drawWalls(sf::RenderWindow& window) {
     mainRect.setOutlineThickness(wall_thickness);
     window.draw(mainRect);
 }
-void resolve_collision(Ball& a, Ball& b, double width, double height) {
+void resolve_collision(Ball& a, Ball& b, double width, double height, double retention) {
     double dx = b.x_pos - a.x_pos;
     double dy = b.y_pos - a.y_pos;
     double dist = std::sqrt(dx * dx + dy * dy);
@@ -250,7 +251,11 @@ void resolve_collision(Ball& a, Ball& b, double width, double height) {
     }
     double m1 = a.mass;
     double m2 = b.mass;
-    double impulse = (2*da) / (m1 + m2);
+    double e = std::min(a.retention, b.retention);
+    double retentionThreshold = 1.5;
+    if (std::abs(da) < retentionThreshold)
+        e = 0.0;
+    double impulse = (1.0+e)*da / (m1 + m2);
     a.x_speed += impulse * m2 * nx;
     a.y_speed += impulse * m2 * ny;
     b.x_speed -= impulse * m1 * nx;
@@ -317,7 +322,7 @@ int main() {
                 }
             }
             if (const auto* spawnBall = event->getIf<sf::Event::MouseWheelScrolled>()) {
-                balls.push_back(Ball(mouse_coords.x, mouse_coords.y, 5, 5, 0.9, 0, 0, nextId, 0.02));
+                balls.push_back(Ball(mouse_coords.x, mouse_coords.y, 5, 5, retention, 0, 0, nextId, 0.02));
                 nextId++;
             }
             
@@ -360,7 +365,7 @@ int main() {
                         double dy = other->y_pos - ball.y_pos;
                         double dist = std::sqrt(dx * dx + dy * dy);
                         if (dist < ball.radius + other->radius) 
-                            resolve_collision(ball, *other, size.x, size.y);
+                            resolve_collision(ball, *other, size.x, size.y, retention);
                     }
                 }
             }
