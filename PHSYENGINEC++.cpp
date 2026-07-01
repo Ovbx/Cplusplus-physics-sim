@@ -14,6 +14,7 @@ double bounce_stop = 0.3;
 int substeps = 3;
 int solverInterations = 6;
 double retention = 0.9;
+double maxRadius = 50;
 
 
 std::vector<sf::Vector2i> mouse_trajectory;
@@ -251,19 +252,23 @@ void resolve_collision(Ball& a, Ball& b, double width, double height, double ret
     }
     double m1 = a.mass;
     double m2 = b.mass;
+    double overlap = (a.radius + b.radius) - dist;
+    double beta = 0.15;
+    double slop = 0.9;
+    double dt = 1.0;
     double e = std::min(a.retention, b.retention);
+
+    double bias = beta * std::max(0.0, overlap - slop) / dt;
     double retentionThreshold = 1.5;
     if (std::abs(da) < retentionThreshold)
         e = 0.0;
-    double impulse = (1.0+e)*da / (m1 + m2);
+    double impulse = ((1.0+e)*da -bias) / (m1 + m2);
     a.x_speed += impulse * m2 * nx;
     a.y_speed += impulse * m2 * ny;
     b.x_speed -= impulse * m1 * nx;
     b.y_speed -= impulse * m1 * ny;
 
     //overlap stuff
-    double overlap = (a.radius + b.radius) - dist;
-    double slop = 0.9;
     if (overlap > slop) {
         m1 = a.mass;
         m2 = b.mass;
@@ -354,13 +359,12 @@ int main() {
                 std::set<std::pair<int, int>> checked;
 
                 for (auto&ball: balls) {
-                    double r = ball.radius;
-                    sf::FloatRect area({(float)(ball.x_pos - 2*r), (float)(ball.y_pos - 2*r)}, {(float)(4*r), (float)(4*r)});
+                    double r = ball.radius + maxRadius;
+                    sf::FloatRect area({(float)(ball.x_pos - r), (float)(ball.y_pos - r)}, {(float)(2*r), (float)(2*r)});
                     std::vector<Ball*> nearby = qt.query(area);
                     for (auto* other: nearby) {
                         if (other->id <= ball.id)
                             continue;
-                        std::pair<int, int> pair = {std::min(ball.id, other->id), std::max(ball.id, other->id)};
                         double dx = other->x_pos - ball.x_pos;
                         double dy = other->y_pos - ball.y_pos;
                         double dist = std::sqrt(dx * dx + dy * dy);
